@@ -23,7 +23,7 @@ class RegulationScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => BreathingExerciseScreen(),
+                    builder: (context) => const BreathingExerciseScreen(),
                   ),
                 );
               },
@@ -35,7 +35,7 @@ class RegulationScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => GroundingExerciseScreen(),
+                    builder: (context) => const GroundingExerciseScreen(),
                   ),
                 );
               },
