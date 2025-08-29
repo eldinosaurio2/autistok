@@ -1,8 +1,10 @@
-import 'dart:io';
-import 'package:autistock/services/data_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:autistock/services/data_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'dart:typed_data';
+import 'dart:io' as io;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,13 +19,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _gender;
   final _otherGenderController = TextEditingController();
 
-  File? _image;
+  // For web, _image will hold Uint8List, for mobile it will hold File
+  dynamic _image;
   final picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _loadProfileData();
+    _otherGenderController.addListener(() {
+      if (mounted) {
+        setState(() {
+          // Rebuild to show updated text
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _birthYearController.dispose();
+    _otherGenderController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProfileData() async {
@@ -37,8 +55,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final imagePath = await dataService.getProfileImagePath();
     if (imagePath != null) {
       setState(() {
-        _image = File(imagePath);
+        if (kIsWeb) {
+          // For web, handle the image path as needed (URL or base64)
+          _image = imagePath;
+        } else {
+          _image = io.File(imagePath);
+        }
       });
+    }
+  }
+
+  Future<void> _getImage() async {
+    final XFile? pickedFile =
+        await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      if (kIsWeb) {
+        // For web, read as bytes
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _image = bytes;
+        });
+        await _saveProfileImageWeb(bytes);
+      } else {
+        // For mobile, use File
+        setState(() {
+          _image = io.File(pickedFile.path);
+        });
+        await _saveProfileImage(pickedFile.path);
+      }
     }
   }
 
@@ -54,37 +99,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _getImage() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
-      await _saveProfileImage(pickedFile.path);
-    }
-  }
-
   Future<void> _saveProfileImage(String path) async {
     final dataService = Provider.of<DataService>(context, listen: false);
     await dataService.setProfileImagePath(path);
   }
 
+  Future<void> _saveProfileImageWeb(Uint8List bytes) async {
+    // Implement saving for web, e.g., upload to server or convert to base64 string
+    // For example:
+    // final base64Image = base64Encode(bytes);
+    // await dataService.setProfileImagePath(base64Image);
+  }
+
   void _showOtherGenderDialog() {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Otro género'),
           content: TextField(
             controller: _otherGenderController,
             decoration:
                 const InputDecoration(hintText: "Especifique su género"),
+            autofocus: true,
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
                 _saveProfileData();
               },
               child: const Text('Guardar'),
@@ -113,7 +155,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onTap: _getImage,
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage: _image != null ? FileImage(_image!) : null,
+                  backgroundImage: _image != null
+                      ? (kIsWeb
+                          ? MemoryImage(_image as Uint8List)
+                          : FileImage(_image as io.File)) as ImageProvider
+                      : null,
                   child: _image == null
                       ? const Icon(Icons.camera_alt, size: 50)
                       : null,
