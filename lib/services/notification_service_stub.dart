@@ -1,13 +1,8 @@
 import 'package:autistock/models/activity.dart';
-import 'package:autistock/models/reward.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-
-export 'notification_service_stub.dart'
-    if (dart.library.io) 'notification_service_mobile.dart';
 
 class NotificationService {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -46,13 +41,10 @@ class NotificationService {
         }
       },
     );
-    if (!kIsWeb) {
-      tz.initializeTimeZones();
-    }
+    tz.initializeTimeZones();
   }
 
   Future<void> scheduleActivityNotification(Activity activity) async {
-    if (kIsWeb) return; // No ejecutar en la web
     const notificationDetails = NotificationDetails(
       android: AndroidNotificationDetails(
         'activity_channel',
@@ -102,7 +94,6 @@ class NotificationService {
 
   Future<void> scheduleDailyNotification(
       {required int hour, required int minute}) async {
-    if (kIsWeb) return; // No ejecutar en la web
     await flutterLocalNotificationsPlugin.zonedSchedule(
       0,
       'Registro Diario',
@@ -121,7 +112,6 @@ class NotificationService {
   }
 
   Future<void> cancelAllMoodReminders() async {
-    if (kIsWeb) return; // No ejecutar en la web
     final pendingRequests =
         await flutterLocalNotificationsPlugin.pendingNotificationRequests();
     for (var request in pendingRequests) {
@@ -130,7 +120,6 @@ class NotificationService {
   }
 
   Future<void> scheduleDailyMoodReminders(List<TimeOfDay> times) async {
-    if (kIsWeb) return; // No ejecutar en la web
     await cancelAllMoodReminders();
     for (int i = 0; i < times.length; i++) {
       final time = times[i];
@@ -157,34 +146,10 @@ class NotificationService {
   }
 
   Future<void> cancelAllNotifications() async {
-    if (kIsWeb) return; // No ejecutar en la web
     await flutterLocalNotificationsPlugin.cancelAll();
   }
 
   Future<void> cancelNotification(String activityId) async {
-    if (kIsWeb) return; // No ejecutar en la web
     await flutterLocalNotificationsPlugin.cancel(activityId.hashCode);
-  }
-
-  Future<void> showRewardUnlockedNotification(Reward reward) async {
-    if (kIsWeb) return; // No ejecutar en la web
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'reward_channel', // ID del canal
-      'Notificaciones de Recompensas', // Nombre del canal
-      channelDescription: 'Notificaciones para recompensas desbloqueadas',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: false,
-    );
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
-
-    await flutterLocalNotificationsPlugin.show(
-      reward.id.hashCode, // Usar un ID único para la notificación
-      '¡Recompensa Desbloqueada!',
-      'Has conseguido: ${reward.name}',
-      platformChannelSpecifics,
-    );
   }
 }

@@ -34,38 +34,52 @@ class _BreathingExerciseScreenState extends State<BreathingExerciseScreen>
 
   @override
   Widget build(BuildContext context) {
-    final breathingAnimation = Center(
-      child: AnimatedBuilder(
-        animation: _animation,
-        builder: (context, child) {
-          return Transform.translate(
-            offset: Offset(0, -100 * (1 - _animation.value)),
-            child: child,
-          );
-        },
-        child: Container(
-          width: 200,
-          height: 200,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.blue,
-          ),
-          child: Center(
-            child: Text(
-              _controller.status == AnimationStatus.forward ||
-                      _controller.status == AnimationStatus.completed
-                  ? 'Inhala'
-                  : 'Exhala',
-              style: const TextStyle(color: Colors.white, fontSize: 24),
-            ),
-          ),
-        ),
-      ),
-    );
-
     return TimerWithSound(
       minutes: 7,
-      child: breathingAnimation,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Center(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                // When the animation is running forward or has completed, the ball is moving down or is at the bottom.
+                bool isExhaling =
+                    _controller.status == AnimationStatus.forward ||
+                        _controller.status == AnimationStatus.completed;
+
+                return Transform.translate(
+                  offset: Offset(0, -100 * (1 - _animation.value)),
+                  child: Container(
+                    width: 200,
+                    height: 200,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.blue,
+                    ),
+                    child: Center(
+                      child: Text(
+                        isExhaling ? 'Exhala' : 'Inhala',
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 24),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 40),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              'Sigue la bola. Inhala lentamente mientras sube y exhala lentamente mientras baja. Concéntrate en tu respiración.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

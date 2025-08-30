@@ -1,321 +1,332 @@
 import 'package:autistock/models/mood_entry.dart';
 import 'package:autistock/services/data_service.dart';
-import 'package:autistock/services/reward_service.dart';
+import 'package:autistock/widgets/mood_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'mood_chart.dart';
 
 class MoodTrackerScreen extends StatefulWidget {
   const MoodTrackerScreen({super.key});
 
   @override
-  MoodTrackerScreenState createState() => MoodTrackerScreenState();
+  State<MoodTrackerScreen> createState() => MoodTrackerScreenState();
 }
 
 class MoodTrackerScreenState extends State<MoodTrackerScreen> {
-  List<MoodEntry> _moodHistory = [];
-  String _selectedMood = 'Feliz';
-  final List<String> _availableActivities = [
-    'Ejercicio',
-    'Socializar',
-    'Trabajo',
-    'Estudio',
-    'Hobby',
-    'Relajación'
-  ];
+  late DataService _dataService;
+  String? _selectedMood;
   final List<String> _selectedActivities = [];
-  String _chartType = 'line';
+  final TextEditingController _notesController = TextEditingController();
+  List<MoodEntry> _moodHistory = [];
+  String _chartType = 'line'; // 'line' or 'bar'
 
   @override
   void initState() {
     super.initState();
+    _dataService = Provider.of<DataService>(context, listen: false);
     _loadMoodHistory();
   }
 
-  Future<void> _loadMoodHistory() async {
-    final dataService = Provider.of<DataService>(context, listen: false);
-    final entries = await dataService.getAllMoods();
+  void _loadMoodHistory() async {
+    final history = await _dataService.getMoodHistory();
     if (mounted) {
       setState(() {
-        _moodHistory = entries;
+        _moodHistory = history;
       });
     }
   }
 
-  String _getTimeOfDay(DateTime date) {
-    if (date.hour >= 5 && date.hour < 12) {
-      return 'Morning';
-    } else if (date.hour >= 12 && date.hour < 18) {
-      return 'Afternoon';
-    } else {
-      return 'Night';
+  void _saveMoodEntry() async {
+    if (_selectedMood == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Por favor, selecciona un estado de ánimo.')),
+      );
+      return;
     }
-  }
-
-  Future<void> _saveMoodEntry() async {
-    final dataService = Provider.of<DataService>(context, listen: false);
-    final rewardService = Provider.of<RewardService>(context, listen: false);
-    final now = DateTime.now();
 
     final newEntry = MoodEntry(
-      date: now,
-      mood: _selectedMood,
+      date: DateTime.now(),
+      mood: _selectedMood!,
       activities: _selectedActivities,
-      timeOfDay: _getTimeOfDay(now),
+      notes: _notesController.text,
+      moodScore: _getMoodScore(_selectedMood!),
     );
 
-    await dataService.saveMood(newEntry);
-    final allEntries = await dataService.getAllMoods();
-    rewardService.checkAndUnlockRewards(allEntries);
+    await _dataService.addMoodEntry(newEntry);
 
-    if (mounted) {
-      _loadMoodHistory();
-      setState(() {
-        _selectedActivities.clear();
-      });
-    }
+    if (!mounted) return;
+
+    _loadMoodHistory(); // Recargar el historial para actualizar el gráfico
+
+    setState(() {
+      _selectedMood = null;
+      _selectedActivities.clear();
+      _notesController.clear();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Estado de ánimo guardado con éxito.')),
+    );
+  }
+
+  int _getMoodScore(String mood) {
+    const moodScores = {
+      'Feliz': 5,
+      'Neutral': 3,
+      'Preocupado': 2,
+      'Ansioso': 2,
+      'Triste': 2,
+      'Miedo': 1,
+      'Ira': 1,
+      'Asco': 1,
+    };
+    return moodScores[mood] ?? 3;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMoodSelector(),
-                  const SizedBox(height: 24),
-                  _buildActivitySelector(),
-                  const SizedBox(height: 24),
-                  _buildHistorySection(),
-                ],
-              ),
-            ),
-          ),
-          _buildSaveButton(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
-      decoration: const BoxDecoration(
-        color: Colors.blue,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-      ),
-      child: Row(
-        children: [
-          _buildChartTypeMenu(),
-          const SizedBox(width: 8),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Monitoriza',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                '¿Cómo te sientes hoy?',
+                style: Theme.of(context).textTheme.headlineSmall,
+                textAlign: TextAlign.center,
               ),
-              Text(
-                'tu estado de ánimo',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                ),
+              const SizedBox(height: 20),
+              _buildMoodSelection(),
+              const SizedBox(height: 20),
+              _buildActivitySelection(),
+              const SizedBox(height: 20),
+              _buildNotesField(),
+              const SizedBox(height: 20),
+              _buildSaveButton(),
+              const SizedBox(height: 20),
+              _buildChartTypeSelector(),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 200,
+                child: MoodChart(moodData: _moodHistory, chartType: _chartType),
               ),
+              const SizedBox(height: 20),
+              _buildMoodHistoryList(),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoodSelection() {
+    const moods = {
+      'Ansioso': 'assets/pictogramas/ansioso.png',
+      'Asco': 'assets/pictogramas/asco.png',
+      'Feliz': 'assets/pictogramas/feliz.png',
+      'Ira': 'assets/pictogramas/ira.png',
+      'Miedo': 'assets/pictogramas/miedo.png',
+      'Neutral': 'assets/pictogramas/neutral.png',
+      'Preocupado': 'assets/pictogramas/preocupado.png',
+      'Triste': 'assets/pictogramas/triste.png',
+    };
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 16.0,
+      runSpacing: 16.0,
+      children: moods.entries.map((entry) {
+        final isSelected = _selectedMood == entry.key;
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedMood = entry.key;
+            });
+          },
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected
+                      ? Theme.of(context).primaryColor.withAlpha(77)
+                      : Colors.transparent,
+                ),
+                child: Image.asset(entry.value, width: 60, height: 60),
+              ),
+              const SizedBox(height: 8),
+              Text(entry.key),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildActivitySelection() {
+    const activities = {
+      'Ejercicio': Icons.fitness_center,
+      'Socializar': Icons.people,
+      'Trabajo': Icons.work,
+      'Ocio': Icons.videogame_asset,
+      'Comida': Icons.fastfood,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('¿Qué has hecho?', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8.0,
+          children: [
+            ...activities.entries.map((entry) {
+              final isSelected = _selectedActivities.contains(entry.key);
+              return ChoiceChip(
+                label: Text(entry.key),
+                avatar: Icon(entry.value),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedActivities.add(entry.key);
+                    } else {
+                      _selectedActivities.remove(entry.key);
+                    }
+                  });
+                },
+              );
+            }),
+            ActionChip(
+              avatar: const Icon(Icons.add),
+              label: const Text('Otra'),
+              onPressed: _showAddActivityDialog,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _showAddActivityDialog() async {
+    final activityController = TextEditingController();
+    final newActivity = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Añadir Actividad'),
+        content: TextField(
+          controller: activityController,
+          decoration: const InputDecoration(hintText: 'Nombre de la actividad'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (activityController.text.isNotEmpty) {
+                Navigator.of(context).pop(activityController.text);
+              }
+            },
+            child: const Text('Añadir'),
           ),
         ],
       ),
     );
-  }
 
-  Widget _buildChartTypeMenu() {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.menu, color: Colors.white),
-      onSelected: (String result) {
-        setState(() {
-          _chartType = result;
-        });
-      },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
-          value: 'line',
-          child: Text('Gráfico de líneas'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'bar',
-          child: Text('Gráfico de barras'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMoodSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '¿Cómo te sientes actualmente?',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 12.0, // Espacio horizontal entre botones
-          runSpacing: 12.0, // Espacio vertical entre filas de botones
-          alignment: WrapAlignment.center,
-          children: [
-            _buildMoodButton('Feliz', 'assets/pictogramas/feliz.png'),
-            _buildMoodButton('Neutral', 'assets/pictogramas/neutral.png'),
-            _buildMoodButton('Triste', 'assets/pictogramas/triste.png'),
-            _buildMoodButton('Ansioso', 'assets/pictogramas/ansioso.png'),
-            _buildMoodButton('Ira', 'assets/pictogramas/ira.png'),
-            _buildMoodButton(
-                'Preocupación', 'assets/pictogramas/preocupado.png'),
-            _buildMoodButton('Asco', 'assets/pictogramas/asco.png'),
-            _buildMoodButton('Miedo', 'assets/pictogramas/miedo.png'),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMoodButton(String mood, String imagePath) {
-    final isSelected = _selectedMood == mood;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedMood = mood;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue : Colors.grey[200],
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(imagePath, height: 50),
-            const SizedBox(height: 8),
-            Text(
-              mood,
-              style: TextStyle(
-                fontSize: 14,
-                color: isSelected ? Colors.white : Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActivitySelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '¿Qué actividades has realizado?',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8.0,
-          children: _availableActivities.map((activity) {
-            final isSelected = _selectedActivities.contains(activity);
-            return FilterChip(
-              label: Text(activity),
-              selected: isSelected,
-              onSelected: (bool selected) {
-                setState(() {
-                  if (selected) {
-                    _selectedActivities.add(activity);
-                  } else {
-                    _selectedActivities.remove(activity);
-                  }
-                });
-              },
-              selectedColor: Colors.blue,
-              checkmarkColor: Colors.white,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.black,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHistorySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Historial',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: _buildMoodChart(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMoodChart() {
-    if (_moodHistory.isEmpty) {
-      return const Center(child: Text('No mood data to display.'));
+    if (newActivity != null && newActivity.isNotEmpty) {
+      setState(() {
+        _selectedActivities.add(newActivity);
+      });
     }
-    return SizedBox(
-      height: 200,
-      child: MoodChart(
-        moodHistory: _moodHistory,
-        chartType: _chartType,
+  }
+
+  Widget _buildNotesField() {
+    return TextField(
+      controller: _notesController,
+      decoration: const InputDecoration(
+        labelText: 'Añade una nota (opcional)',
+        border: OutlineInputBorder(),
       ),
+      maxLines: 3,
     );
   }
 
   Widget _buildSaveButton() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: ElevatedButton(
-        onPressed: _saveMoodEntry,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
-          minimumSize: const Size(double.infinity, 50),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: const Text(
-          'Guardar',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+    return ElevatedButton(
+      onPressed: _saveMoodEntry,
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        textStyle: const TextStyle(fontSize: 18),
       ),
+      child: const Text('Guardar'),
+    );
+  }
+
+  Widget _buildChartTypeSelector() {
+    return SegmentedButton<String>(
+      segments: const [
+        ButtonSegment(
+            value: 'line', label: Text('Línea'), icon: Icon(Icons.show_chart)),
+        ButtonSegment(
+            value: 'bar', label: Text('Barra'), icon: Icon(Icons.bar_chart)),
+      ],
+      selected: {_chartType},
+      onSelectionChanged: (newSelection) {
+        setState(() {
+          _chartType = newSelection.first;
+        });
+      },
+    );
+  }
+
+  Widget _buildMoodHistoryList() {
+    if (_moodHistory.isEmpty) {
+      return const Center(child: Text('Aún no hay registros de ánimo.'));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Historial Reciente',
+            style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 10),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _moodHistory.length,
+          itemBuilder: (context, index) {
+            final entry = _moodHistory[index];
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              child: ListTile(
+                leading: Image.asset(
+                  'assets/pictogramas/${entry.mood.toLowerCase()}.png',
+                  width: 40,
+                  height: 40,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.sentiment_neutral, size: 40),
+                ),
+                title: Text(
+                    '${entry.mood} - ${entry.date.day}/${entry.date.month}/${entry.date.year}'),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (entry.activities.isNotEmpty)
+                      Text('Actividades: ${entry.activities.join(', ')}'),
+                    if (entry.notes?.isNotEmpty ?? false)
+                      Text('Notas: ${entry.notes}'),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

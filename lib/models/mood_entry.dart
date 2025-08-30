@@ -2,15 +2,15 @@ class MoodEntry {
   final DateTime date;
   final String mood;
   final List<String> activities;
-  final String? note;
-  final String timeOfDay;
+  final String? notes;
+  final int moodScore;
 
   MoodEntry({
     required this.date,
     required this.mood,
     required this.activities,
-    this.note,
-    required this.timeOfDay,
+    this.notes,
+    required this.moodScore,
   });
 
   factory MoodEntry.fromJson(Map<String, dynamic> json) {
@@ -18,9 +18,8 @@ class MoodEntry {
       date: DateTime.parse(json['date']),
       mood: json['mood'],
       activities: List<String>.from(json['activities'] ?? []),
-      note: json['note'],
-      timeOfDay:
-          json['timeOfDay'] ?? _getTimeOfDay(DateTime.parse(json['date'])),
+      notes: json['note'],
+      moodScore: json['moodScore'] ?? 0,
     );
   }
 
@@ -29,18 +28,8 @@ class MoodEntry {
       'date': date.toIso8601String(),
       'mood': mood,
       'activities': activities,
-      'note': note,
-      'timeOfDay': timeOfDay,
+      'note': notes,
+      'moodScore': moodScore,
     };
-  }
-
-  static String _getTimeOfDay(DateTime date) {
-    if (date.hour >= 5 && date.hour < 12) {
-      return 'Morning';
-    } else if (date.hour >= 12 && date.hour < 18) {
-      return 'Afternoon';
-    } else {
-      return 'Night';
-    }
   }
 }

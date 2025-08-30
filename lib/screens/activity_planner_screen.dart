@@ -1,5 +1,7 @@
 import 'package:autistock/models/activity.dart';
 import 'package:autistock/services/data_service.dart';
+import 'package:autistock/services/notification_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -16,17 +18,23 @@ class ActivityPlannerScreen extends StatefulWidget {
 
 class ActivityPlannerScreenState extends State<ActivityPlannerScreen> {
   List<Activity> _activities = [];
+  late DataService _dataService;
+  NotificationService? _notificationService;
 
   @override
   void initState() {
     super.initState();
+    _dataService = Provider.of<DataService>(context, listen: false);
+    if (!kIsWeb) {
+      _notificationService =
+          Provider.of<NotificationService>(context, listen: false);
+    }
     _loadActivities();
   }
 
   void _loadActivities() async {
-    final dataService = Provider.of<DataService>(context, listen: false);
     final activities =
-        await dataService.getActivitiesForDay(widget.selectedDay);
+        await _dataService.getActivitiesForDay(widget.selectedDay);
     if (mounted) {
       setState(() {
         _activities = activities;
@@ -35,29 +43,44 @@ class ActivityPlannerScreenState extends State<ActivityPlannerScreen> {
   }
 
   void _saveActivities() {
-    final dataService = Provider.of<DataService>(context, listen: false);
-    dataService.saveActivitiesForDay(widget.selectedDay, _activities);
+    _dataService.saveActivitiesForDay(widget.selectedDay, _activities);
   }
 
-  void _addActivity(Activity activity) {
+  void _addActivity(Activity activity) async {
     setState(() {
       _activities.add(activity);
     });
     _saveActivities();
+    final globalNotificationsEnabled =
+        await _dataService.loadGlobalNotificationSetting();
+    final activityNotificationsEnabled =
+        await _dataService.loadNotificationSettings('activity');
+    if (globalNotificationsEnabled && activityNotificationsEnabled) {
+      _notificationService?.scheduleActivityNotification(activity);
+    }
   }
 
-  void _removeActivity(int index) {
+  void _removeActivity(int index) async {
+    final activity = _activities[index];
     setState(() {
       _activities.removeAt(index);
     });
     _saveActivities();
+    _notificationService?.cancelNotification(activity.id);
   }
 
-  void _editActivity(int index, Activity activity) {
+  void _editActivity(int index, Activity activity) async {
     setState(() {
       _activities[index] = activity;
     });
     _saveActivities();
+    final globalNotificationsEnabled =
+        await _dataService.loadGlobalNotificationSetting();
+    final activityNotificationsEnabled =
+        await _dataService.loadNotificationSettings('activity');
+    if (globalNotificationsEnabled && activityNotificationsEnabled) {
+      _notificationService?.scheduleActivityNotification(activity);
+    }
   }
 
   void _showActivityDialog({Activity? activity, int? index}) async {

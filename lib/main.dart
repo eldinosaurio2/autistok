@@ -1,32 +1,43 @@
-import 'package:autistock/app_theme.dart';
+import 'package:autistock/app_theme.dart' hide ThemeNotifier;
+import 'package:autistock/screens/activity_planner_screen.dart';
 import 'package:autistock/screens/emergency_contact_screen.dart';
 import 'package:autistock/screens/home_screen.dart';
 import 'package:autistock/screens/mood_tracker_screen.dart';
+import 'package:autistock/screens/profile_screen.dart';
 import 'package:autistock/screens/rewards_screen.dart';
 import 'package:autistock/screens/settings_screen.dart';
 import 'package:autistock/screens/user_manual_screen.dart';
 import 'package:autistock/services/data_service.dart';
 import 'package:autistock/services/notification_service.dart';
 import 'package:autistock/services/reward_service.dart';
+import 'package:autistock/services/theme_notifier.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
+import 'dart:io' as io;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   final dataService = DataService();
-  await NotificationService().init();
-  await initializeDateFormatting();
+  final notificationService = kIsWeb ? null : NotificationService();
+  if (!kIsWeb) {
+    await notificationService?.init();
+  }
 
   runApp(
     MultiProvider(
       providers: [
         Provider<DataService>.value(value: dataService),
-        ChangeNotifierProvider(create: (_) => ThemeNotifier()),
-        ChangeNotifierProvider(create: (_) => RewardService(dataService)),
-        Provider<NotificationService>(create: (_) => NotificationService()),
+        ChangeNotifierProvider(create: (_) => ThemeNotifier(dataService)),
+        ChangeNotifierProvider(
+          create: (_) => RewardService(
+            dataService,
+            notificationService: notificationService,
+          ),
+        ),
+        if (!kIsWeb && notificationService != null)
+          Provider<NotificationService>.value(value: notificationService),
       ],
       child: const AutiStockApp(),
     ),
@@ -52,11 +63,26 @@ class AutiStockApp extends StatelessWidget {
               child: child!,
             );
           },
-          home: const MainScreen(),
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en', ''), // English, no country code
+            Locale('es', ''), // Spanish, no country code
+          ],
+          initialRoute: '/',
           routes: {
+            '/': (context) => const MainScreen(),
+            '/mood': (context) => const MoodTrackerScreen(),
+            '/rewards': (context) => const RewardsScreen(),
             '/settings': (context) => const SettingsScreen(),
+            '/profile': (context) => const ProfileScreen(),
             '/emergency': (context) => const EmergencyContactScreen(),
             '/manual': (context) => const UserManualScreen(),
+            '/planner': (context) =>
+                ActivityPlannerScreen(selectedDay: DateTime.now()),
           },
         );
       },
@@ -106,12 +132,11 @@ class _MainScreenState extends State<MainScreen> {
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.power_settings_new),
-            onPressed: () {
-              exit(0);
-            },
-          ),
+          if (!kIsWeb)
+            IconButton(
+              icon: const Icon(Icons.power_settings_new),
+              onPressed: () => io.exit(0),
+            ),
         ],
       ),
       drawer: Drawer(

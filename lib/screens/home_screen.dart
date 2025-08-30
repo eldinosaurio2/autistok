@@ -92,31 +92,42 @@ class _HomeScreenState extends State<HomeScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 15,
-            crossAxisSpacing: 15,
-            children: _menuItems.map((item) {
-              return _buildMenuButton(
-                title: item['title'],
-                icon: item['icon'],
-                screen: item['screen'],
-                color: item['color'],
-                onTap: () {
-                  _incrementFrequency(item['id']);
-                  if (item['id'] == 'mood') {
-                    widget.onNavigateToPage(1);
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => item['screen']),
-                    );
-                  }
-                },
-              );
-            }).toList(),
+          child: Column(
+            children: [
+              const Text(
+                'Hola, bienvenido/a a la app en desarrollo para apoyarte si eres autista como yo. Cuéntame que necesitas para mejorar el servicio. Gracias por ser parte de este proyecto',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 20),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 15,
+                crossAxisSpacing: 15,
+                children: _menuItems.map((item) {
+                  return _buildMenuButton(
+                    title: item['title'],
+                    icon: item['icon'],
+                    screen: item['screen'],
+                    color: item['color'],
+                    onTap: () {
+                      _incrementFrequency(item['id']);
+                      if (item['id'] == 'mood') {
+                        widget.onNavigateToPage(1);
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => item['screen']),
+                        );
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
           ),
         ),
       ),

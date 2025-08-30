@@ -1,9 +1,11 @@
 import 'package:autistock/models/mood_entry.dart';
 import 'package:autistock/models/reward.dart';
 import 'package:flutter/material.dart';
+import 'package:autistock/services/notification_service.dart'; // Add this import if NotificationService exists in this path
 
 class RewardService extends ChangeNotifier {
-  final dynamic dataService; // Add this field, use the correct type if known
+  final dynamic dataService;
+  final NotificationService? notificationService;
   final List<Reward> _rewards = [
     Reward(
       id: 'first_entry',
@@ -35,11 +37,12 @@ class RewardService extends ChangeNotifier {
       unlockCondition: (entries) => _hasMorningAndAfternoonEntry(entries),
     ),
   ];
+
   List<String> _unlockedRewardIds = [];
 
   List<Reward> get rewards => _rewards;
 
-  RewardService(this.dataService) {
+  RewardService(this.dataService, {this.notificationService}) {
     _loadUnlockedRewards();
   }
 
@@ -55,11 +58,20 @@ class RewardService extends ChangeNotifier {
 
   void checkAndUnlockRewards(List<MoodEntry> allEntries) async {
     bool changed = false;
+    final isGlobalNotificationsEnabled =
+        await dataService.loadGlobalNotificationSetting();
+    if (!isGlobalNotificationsEnabled) return;
+
+    final isRewardNotificationEnabled =
+        await dataService.loadNotificationSettings('reward');
     for (var reward in _rewards) {
       if (!reward.unlocked && reward.unlockCondition(allEntries)) {
         reward.unlocked = true;
         _unlockedRewardIds.add(reward.id);
         changed = true;
+        if (isRewardNotificationEnabled) {
+          notificationService?.showRewardUnlockedNotification(reward);
+        }
       }
     }
     if (changed) {

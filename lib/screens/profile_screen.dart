@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:autistock/services/data_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'dart:typed_data';
-import 'dart:io' as io;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,8 +19,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _gender;
   final _otherGenderController = TextEditingController();
 
-  // For web, _image will hold Uint8List, for mobile it will hold File
-  dynamic _image;
+  Uint8List? _imageBytes;
   final picker = ImagePicker();
 
   @override
@@ -55,11 +54,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final imagePath = await dataService.getProfileImagePath();
     if (imagePath != null) {
       setState(() {
-        if (kIsWeb) {
-          // For web, handle the image path as needed (URL or base64)
-          _image = imagePath;
-        } else {
-          _image = io.File(imagePath);
+        try {
+          _imageBytes = base64Decode(imagePath);
+        } catch (e) {
+          print("Error decoding base64 image: $e");
+          _imageBytes = null;
         }
       });
     }
@@ -70,20 +69,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
-      if (kIsWeb) {
-        // For web, read as bytes
-        final bytes = await pickedFile.readAsBytes();
-        setState(() {
-          _image = bytes;
-        });
-        await _saveProfileImageWeb(bytes);
-      } else {
-        // For mobile, use File
-        setState(() {
-          _image = io.File(pickedFile.path);
-        });
-        await _saveProfileImage(pickedFile.path);
-      }
+      final bytes = await pickedFile.readAsBytes();
+      setState(() {
+        _imageBytes = bytes;
+      });
+      await _saveProfileImageWeb(bytes);
     }
   }
 
@@ -105,10 +95,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _saveProfileImageWeb(Uint8List bytes) async {
-    // Implement saving for web, e.g., upload to server or convert to base64 string
-    // For example:
-    // final base64Image = base64Encode(bytes);
-    // await dataService.setProfileImagePath(base64Image);
+    final base64Image = base64Encode(bytes);
+    await _saveProfileImage(base64Image);
   }
 
   void _showOtherGenderDialog() {
@@ -125,9 +113,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
+              onPressed: () async {
+                await _saveProfileData();
+                if (!mounted) return;
                 Navigator.of(dialogContext).pop();
-                _saveProfileData();
               },
               child: const Text('Guardar'),
             ),
@@ -155,12 +144,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onTap: _getImage,
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage: _image != null
-                      ? (kIsWeb
-                          ? MemoryImage(_image as Uint8List)
-                          : FileImage(_image as io.File)) as ImageProvider
-                      : null,
-                  child: _image == null
+                  backgroundImage:
+                      _imageBytes != null ? MemoryImage(_imageBytes!) : null,
+                  child: _imageBytes == null
                       ? const Icon(Icons.camera_alt, size: 50)
                       : null,
                 ),
@@ -209,7 +195,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         setState(() {
                           _gender = 'male';
                         });
-                        _saveProfileData();
                       }
                     },
                     selectedColor: Theme.of(context).colorScheme.primary,
@@ -227,7 +212,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         setState(() {
                           _gender = 'female';
                         });
-                        _saveProfileData();
                       }
                     },
                     selectedColor: Theme.of(context).colorScheme.primary,
@@ -266,8 +250,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: ElevatedButton(
-                onPressed: () {
-                  _saveProfileData();
+                onPressed: () async {
+                  await _saveProfileData();
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Perfil guardado')),
                   );

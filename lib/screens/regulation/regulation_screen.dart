@@ -11,13 +11,10 @@ class RegulationScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Regulación Emocional'),
       ),
-      body: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+      body: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-            ),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(

@@ -47,7 +47,7 @@ class UserManualScreen extends StatelessWidget {
             ),
             _buildSectionTitle('7. Configuración'),
             _buildSectionContent(
-              'Personaliza tu experiencia en la aplicación. Puedes cambiar entre el tema claro y oscuro, y ajustar el tamaño del texto para una mejor lectura.',
+              'Personaliza tu experiencia en la aplicación. Puedes cambiar entre el tema claro y oscuro, y ajustar el tamaño del texto para una mejor lectura. También puedes gestionar las notificaciones de la aplicación, incluyendo un interruptor global para activarlas o desactivarlas, y ajustes individuales para los recordatorios de estado de ánimo, recordatorios de actividades y notificaciones de recompensas. Ten en cuenta que las notificaciones solo están disponibles en la versión móvil de la aplicación (iOS/Android).',
             ),
             _buildSectionTitle('8. Botón de Apagado'),
             _buildSectionContent(

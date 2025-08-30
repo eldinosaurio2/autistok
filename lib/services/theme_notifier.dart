@@ -1,5 +1,6 @@
 import 'package:autistock/services/data_service.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeNotifier extends ChangeNotifier {
   final DataService dataService;
@@ -44,5 +45,29 @@ class ThemeNotifier extends ChangeNotifier {
     _textScaleFactor = scaleFactor;
     dataService.saveTextScaleFactor(_textScaleFactor);
     notifyListeners();
+  }
+}
+
+class ThemeNotifierPrefs with ChangeNotifier {
+  ThemeMode _themeMode;
+  double _textScaleFactor;
+
+  ThemeMode get themeMode => _themeMode;
+  double get textScaleFactor => _textScaleFactor;
+
+  ThemeNotifierPrefs(this._themeMode, this._textScaleFactor);
+
+  void setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('themeMode', mode.index);
+  }
+
+  void setTextScaleFactor(double factor) async {
+    _textScaleFactor = factor;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('textScaleFactor', factor);
   }
 }

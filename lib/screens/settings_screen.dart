@@ -1,6 +1,7 @@
 import 'package:autistock/services/data_service.dart';
 import 'package:autistock/services/notification_service.dart';
-import 'package:autistock/app_theme.dart';
+import 'package:autistock/services/theme_notifier.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -13,197 +14,223 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late DataService _dataService;
-  late NotificationService _notificationService;
-  bool _notificationsEnabled = false;
+  NotificationService? _notificationService;
+  bool _globalNotificationsEnabled = true;
+  bool _moodNotificationsEnabled = false;
+  bool _activityNotificationsEnabled = false;
+  bool _rewardNotificationsEnabled = false;
   List<TimeOfDay> _notificationTimes = [];
 
   @override
   void initState() {
     super.initState();
     _dataService = Provider.of<DataService>(context, listen: false);
-    _notificationService =
-        Provider.of<NotificationService>(context, listen: false);
+    if (!kIsWeb) {
+      _notificationService =
+          Provider.of<NotificationService>(context, listen: false);
+    }
     _loadSettings();
   }
 
   void _loadSettings() async {
-    _notificationsEnabled = await _dataService.loadNotificationSettings();
-    final times = await _dataService.loadNotificationTimes();
-    setState(() {
-      _notificationTimes = times
-          .map((timeString) => TimeOfDay(
-                hour: int.parse(timeString.split(':')[0]),
-                minute: int.parse(timeString.split(':')[1]),
-              ))
-          .toList();
-    });
-  }
-
-  void _updateNotificationSettings(bool enabled) {
-    setState(() {
-      _notificationsEnabled = enabled;
-    });
-    _dataService.saveNotificationSettings(enabled);
-    if (enabled) {
-      _notificationService.scheduleDailyMoodReminders(_notificationTimes);
-    } else {
-      _notificationService.cancelAllMoodReminders();
+    if (!kIsWeb) {
+      _globalNotificationsEnabled =
+          await _dataService.loadGlobalNotificationSetting();
+      _moodNotificationsEnabled =
+          await _dataService.loadNotificationSettings('mood');
+      _activityNotificationsEnabled =
+          await _dataService.loadNotificationSettings('activity');
+      _rewardNotificationsEnabled =
+          await _dataService.loadNotificationSettings('reward');
+      final times = await _dataService.loadNotificationTimes();
+      if (mounted) {
+        setState(() {
+          _notificationTimes = times
+              .map((timeString) => TimeOfDay(
+                    hour: int.parse(timeString.split(':')[0]),
+                    minute: int.parse(timeString.split(':')[1]),
+                  ))
+              .toList();
+        });
+      }
     }
   }
 
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
+  void _updateGlobalNotificationSettings(bool enabled) {
+    if (kIsWeb) return;
+    setState(() {
+      _globalNotificationsEnabled = enabled;
+    });
+    _dataService.saveGlobalNotificationSetting(enabled);
+    if (!enabled) {
+      _notificationService?.cancelAllNotifications();
+    }
+  }
+
+  void _updateMoodNotificationSettings(bool enabled) {
+    if (kIsWeb) return;
+    setState(() {
+      _moodNotificationsEnabled = enabled;
+    });
+    _dataService.saveNotificationSettings('mood', enabled);
+    if (enabled) {
+      _notificationService?.scheduleDailyMoodReminders(_notificationTimes);
+    } else {
+      _notificationService?.cancelAllMoodReminders();
+    }
+  }
+
+  void _updateActivityNotificationSettings(bool enabled) {
+    if (kIsWeb) return;
+    setState(() {
+      _activityNotificationsEnabled = enabled;
+    });
+    _dataService.saveNotificationSettings('activity', enabled);
+  }
+
+  void _updateRewardNotificationSettings(bool enabled) {
+    if (kIsWeb) return;
+    setState(() {
+      _rewardNotificationsEnabled = enabled;
+    });
+    _dataService.saveNotificationSettings('reward', enabled);
+  }
+
+  void _addNotificationTime() async {
+    if (kIsWeb) return;
+    final newTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    if (picked != null && !_notificationTimes.contains(picked)) {
+    if (newTime != null) {
       setState(() {
-        _notificationTimes.add(picked);
+        _notificationTimes.add(newTime);
       });
       _saveAndRescheduleNotifications();
     }
   }
 
-  void _removeTime(TimeOfDay time) {
+  void _removeNotificationTime(int index) {
+    if (kIsWeb) return;
     setState(() {
-      _notificationTimes.remove(time);
+      _notificationTimes.removeAt(index);
     });
     _saveAndRescheduleNotifications();
   }
 
   void _saveAndRescheduleNotifications() {
+    if (kIsWeb) return;
     final timeStrings = _notificationTimes
         .map((time) => '${time.hour}:${time.minute}')
         .toList();
     _dataService.saveNotificationTimes(timeStrings);
-    if (_notificationsEnabled) {
-      _notificationService.scheduleDailyMoodReminders(_notificationTimes);
+    if (_moodNotificationsEnabled) {
+      _notificationService?.scheduleDailyMoodReminders(_notificationTimes);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configuración'),
       ),
       body: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            children: [
-              _buildAppearanceSettings(context),
-              _buildTextSizeSettings(context),
-              _buildNotificationSettings(context),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppearanceSettings(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: ListTile(
-        leading: const Icon(Icons.palette),
-        title: const Text('Modo Oscuro'),
-        trailing: Switch(
-          value: themeNotifier.isDarkMode,
-          onChanged: (value) {
-            themeNotifier.toggleTheme();
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextSizeSettings(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Tamaño del Texto',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.remove),
-                  onPressed: () {
-                    final newScaleFactor =
-                        (themeNotifier.textScaleFactor - 0.1).clamp(0.8, 2.0);
-                    themeNotifier.setTextScaleFactor(newScaleFactor);
-                  },
+            if (!kIsWeb) ...[
+              // <--- ESTA LÍNEA OCULTA LAS NOTIFICACIONES EN LA WEB
+              const Text(
+                'Notificaciones',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SwitchListTile(
+                title: const Text('Activar notificaciones'),
+                value: _globalNotificationsEnabled,
+                onChanged: _updateGlobalNotificationSettings,
+              ),
+              if (_globalNotificationsEnabled) ...[
+                SwitchListTile(
+                  title: const Text('Recordatorios de estado de ánimo'),
+                  value: _moodNotificationsEnabled,
+                  onChanged: _updateMoodNotificationSettings,
                 ),
-                Text(
-                  '${(themeNotifier.textScaleFactor * 100).toStringAsFixed(0)}%',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                if (_moodNotificationsEnabled)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Horarios de notificación de ánimo',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        ..._notificationTimes.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final time = entry.value;
+                          return ListTile(
+                            title: Text(time.format(context)),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () => _removeNotificationTime(index),
+                            ),
+                          );
+                        }),
+                        ElevatedButton(
+                          onPressed: _addNotificationTime,
+                          child: const Text('Añadir horario'),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                SwitchListTile(
+                  title: const Text('Recordatorios de actividades'),
+                  subtitle: const Text(
+                      'Recibir alertas para las actividades planificadas.'),
+                  value: _activityNotificationsEnabled,
+                  onChanged: _updateActivityNotificationSettings,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    final newScaleFactor =
-                        (themeNotifier.textScaleFactor + 0.1).clamp(0.8, 2.0);
-                    themeNotifier.setTextScaleFactor(newScaleFactor);
-                  },
+                SwitchListTile(
+                  title: const Text('Notificaciones de recompensas'),
+                  subtitle: const Text(
+                      'Recibir una alerta al desbloquear recompensas.'),
+                  value: _rewardNotificationsEnabled,
+                  onChanged: _updateRewardNotificationSettings,
                 ),
               ],
+              const Divider(height: 40),
+            ], // <--- FIN DEL BLOQUE OCULTO
+            const Text(
+              'Apariencia',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            SwitchListTile(
+              title: const Text('Modo oscuro'),
+              value: themeNotifier.themeMode == ThemeMode.dark,
+              onChanged: (value) {
+                themeNotifier.toggleTheme();
+              },
+            ),
+            const SizedBox(height: 10),
+            Text(
+                'Tamaño del texto: ${themeNotifier.textScaleFactor.toStringAsFixed(1)}x'),
+            Slider(
+              value: themeNotifier.textScaleFactor,
+              min: 0.8,
+              max: 2.0,
+              divisions: 12,
+              label: themeNotifier.textScaleFactor.toStringAsFixed(1),
+              onChanged: (value) {
+                themeNotifier.setTextScaleFactor(value);
+              },
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildNotificationSettings(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        children: [
-          SwitchListTile(
-            title: const Text('Activar Notificaciones de Ánimo'),
-            value: _notificationsEnabled,
-            onChanged: _updateNotificationSettings,
-          ),
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'Recordatorios',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _notificationTimes.length,
-            itemBuilder: (context, index) {
-              final time = _notificationTimes[index];
-              return ListTile(
-                leading: const Icon(Icons.access_time),
-                title: Text(time.format(context)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () => _removeTime(time),
-                ),
-                enabled: _notificationsEnabled,
-              );
-            },
-          ),
-          TextButton(
-            onPressed: () => _selectTime(context),
-            child: const Text('Añadir Recordatorio'),
-          ),
-        ],
       ),
     );
   }
