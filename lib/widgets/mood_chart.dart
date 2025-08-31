@@ -163,7 +163,7 @@ class MoodChart extends StatelessWidget {
   }
 
   Widget _bottomTitleWidgets(double value, TitleMeta meta) {
-    final style = TextStyle(
+    const style = TextStyle(
         color: const Color(0xff68737d),
         fontWeight: FontWeight.bold,
         fontSize: 14);

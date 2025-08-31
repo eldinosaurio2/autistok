@@ -104,6 +104,8 @@ class NotificationService {
       scheduleTime,
       notificationDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime, // <-- CAMBIO
       payload: 'activity_${activity.id}',
     );
   }
@@ -128,6 +130,8 @@ class NotificationService {
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime, // <-- CAMBIO
         matchDateTimeComponents: DateTimeComponents.time,
         payload: 'mood_reminder',
       );
@@ -149,6 +153,8 @@ class NotificationService {
             priority: Priority.high),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime, // <-- CAMBIO
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }

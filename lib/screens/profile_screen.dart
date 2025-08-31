@@ -1,10 +1,10 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:autistock/services/data_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'dart:typed_data';
+import 'package:share_plus/share_plus.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -62,6 +62,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       });
     }
+  }
+
+  Future<void> _shareProfile() async {
+    final name = _nameController.text;
+    final birthYear = _birthYearController.text;
+    String genderText;
+
+    if (_gender == 'male') {
+      genderText = 'Masculino';
+    } else if (_gender == 'female') {
+      genderText = 'Femenino';
+    } else if (_gender == 'other') {
+      genderText = _otherGenderController.text.isNotEmpty
+          ? _otherGenderController.text
+          : 'Otro';
+    } else {
+      genderText = 'No especificado';
+    }
+
+    final profileSummary = '''
+      Nombre: $name
+      Año de Nacimiento: $birthYear
+      Género: $genderText
+    ''';
+
+    await Share.share(profileSummary, subject: 'Mi Perfil de Autistock');
   }
 
   Future<void> _getImage() async {
@@ -249,15 +275,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: ElevatedButton(
-                onPressed: () async {
-                  await _saveProfileData();
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Perfil guardado')),
-                  );
-                },
-                child: const Text('Guardar'),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      await _saveProfileData();
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Perfil guardado')),
+                      );
+                    },
+                    child: const Text('Guardar'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _shareProfile,
+                    child: const Text('Compartir'),
+                  ),
+                ],
               ),
             ),
           ],

@@ -3,8 +3,12 @@ import 'dart:convert';
 import 'package:autistock/models/mood_entry.dart';
 import 'package:autistock/models/activity.dart';
 import 'package:autistock/models/emergency_contact.dart';
+import 'package:autistock/models/energy_entry.dart';
+import 'package:autistock/models/reward.dart';
 
 class DataService {
+  static const String _energyHistoryKey = 'energy_history';
+
   Future<SharedPreferences> _getPrefs() async {
     return SharedPreferences.getInstance();
   }
@@ -105,23 +109,80 @@ class DataService {
     await prefs.setString('activities_$dateString', jsonEncode(activitiesJson));
   }
 
-  Future<List<Activity>> getActivitiesForDay(DateTime day) async {
-    final prefs = await _getPrefs();
+  Future<List<Activity>> getActivitiesForDayV3(DateTime day) async {
+    final activities = await loadActivities();
+    return activities
+        .where((activity) =>
+            activity.date.year == day.year &&
+            activity.date.month == day.month &&
+            activity.date.day == day.day)
+        .toList();
+  }
+
+  Future<List<Activity>> fetchAllActivities() async {
+    return await loadActivities();
+  }
+
+  Future<void> saveActivitiesForDayV2Alt(
+      DateTime day, List<Activity> activities) async {
+    final allActivities = await loadActivities();
     final dateString = day.toIso8601String().substring(0, 10);
-    final activitiesJson = prefs.getString('activities_$dateString');
-    if (activitiesJson == null) {
-      return [];
-    }
-    final activitiesList = jsonDecode(activitiesJson) as List;
-    return activitiesList.map((json) => Activity.fromJson(json)).toList();
+    final activitiesJson =
+        activities.map((activity) => activity.toJson()).toList();
+    final prefs = await _getPrefs();
+    await prefs.setString('activities_$dateString', jsonEncode(activitiesJson));
   }
 
   Future<List<DateTime>> getDatesWithActivities() async {
+    final activities = await loadActivities();
+    return activities.map((activity) => activity.date).toSet().toList();
+  }
+
+  Future<List<Activity>> fetchAllActivitiesList() async {
+    return await loadActivities();
+  }
+
+  Future<void> saveActivitiesForDayMerged(
+      DateTime day, List<Activity> activities) async {
+    List<Activity> allActivities = await loadActivities();
+    allActivities.removeWhere((activity) =>
+        activity.date.year == day.year &&
+        activity.date.month == day.month &&
+        activity.date.day == day.day);
+    allActivities.addAll(activities);
+    await saveActivities(allActivities);
+  }
+
+  Future<List<Activity>> getActivitiesForDay(DateTime day) async {
+    final activities = await loadActivities();
+    return activities
+        .where((activity) =>
+            activity.date.year == day.year &&
+            activity.date.month == day.month &&
+            activity.date.day == day.day)
+        .toList();
+  }
+
+  Future<List<Activity>> getAllActivities() async {
+    return await loadActivities();
+  }
+
+  Future<void> saveActivitiesForDayV2(
+      DateTime day, List<Activity> activities) async {
+    final allActivities = await loadActivities();
+    final dateString = day.toIso8601String().substring(0, 10);
+    final activitiesJson =
+        activities.map((activity) => activity.toJson()).toList();
+    final prefs = await _getPrefs();
+    await prefs.setString('activities_$dateString', jsonEncode(activitiesJson));
+  }
+
+  Future<List<DateTime>> getDatesWithActivitiesFromKeys() async {
     // This functionality depends on being able to list all keys.
     return [];
   }
 
-  Future<List<Activity>> getAllActivities() async {
+  Future<List<Activity>> getAllActivitiesFromKeys() async {
     // This functionality depends on being able to list all keys.
     return [];
   }
@@ -261,6 +322,61 @@ class DataService {
     await prefs.setString('activities', jsonEncode(activitiesJson));
   }
 
+  Future<void> saveUnlockedRewardIdsV2(List<String> ids) async {
+    final prefs = await _getPrefs();
+    await prefs.setStringList('unlocked_reward_ids', ids);
+  }
+
+  Future<void> saveMoodEntriesV2(List<MoodEntry> entries) async {
+    final prefs = await _getPrefs();
+    String json = jsonEncode(entries.map((e) => e.toJson()).toList());
+    await prefs.setString('mood_entries', json);
+  }
+
+  Future<List<String>> loadUnlockedRewardIdsV2() async {
+    final prefs = await _getPrefs();
+    return prefs.getStringList('unlocked_reward_ids') ?? [];
+  }
+
+  Future<void> saveButtonFrequenciesV2(Map<String, int> frequencies) async {
+    final prefs = await _getPrefs();
+    final jsonString = jsonEncode(frequencies);
+    await prefs.setString('button_frequencies', jsonString);
+  }
+
+  Future<Map<String, int>> loadButtonFrequenciesFromPrefs() async {
+    final prefs = await _getPrefs();
+    final jsonString = prefs.getString('button_frequencies');
+    if (jsonString != null) {
+      final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
+      return jsonMap.map((key, value) => MapEntry(key, value as int));
+    }
+    return {};
+  }
+
+  Future<void> addEnergyEntry(EnergyEntry entry) async {
+    final prefs = await SharedPreferences.getInstance();
+    final history = await getEnergyHistory();
+    history.add(entry);
+    final jsonList = history.map((e) => jsonEncode(e.toJson())).toList();
+    await prefs.setStringList(_energyHistoryKey, jsonList);
+  }
+
+  Future<List<EnergyEntry>> getEnergyHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = prefs.getStringList(_energyHistoryKey) ?? [];
+    return jsonList
+        .map((e) => EnergyEntry.fromJson(jsonDecode(e)))
+        .toList()
+        .cast<EnergyEntry>();
+  }
+
+  Future<void> saveRewards(List<Reward> rewards) async {
+    final prefs = await _getPrefs();
+    final rewardsJson = rewards.map((reward) => reward.toJson()).toList();
+    await prefs.setString('rewards', jsonEncode(rewardsJson));
+  }
+
   Future<void> saveUnlockedRewardIds(List<String> ids) async {
     final prefs = await _getPrefs();
     await prefs.setStringList('unlocked_reward_ids', ids);
@@ -281,6 +397,26 @@ class DataService {
     final prefs = await _getPrefs();
     final jsonString = jsonEncode(frequencies);
     await prefs.setString('button_frequencies', jsonString);
+  }
+
+  Future<void> saveLightSensitivity(double value) async {
+    final prefs = await _getPrefs();
+    await prefs.setDouble('light_sensitivity', value);
+  }
+
+  Future<double> loadLightSensitivity() async {
+    final prefs = await _getPrefs();
+    return prefs.getDouble('light_sensitivity') ?? 5.0;
+  }
+
+  Future<void> saveSoundSensitivity(double value) async {
+    final prefs = await _getPrefs();
+    await prefs.setDouble('sound_sensitivity', value);
+  }
+
+  Future<double> loadSoundSensitivity() async {
+    final prefs = await _getPrefs();
+    return prefs.getDouble('sound_sensitivity') ?? 5.0;
   }
 
   Future<Map<String, int>> loadButtonFrequencies() async {

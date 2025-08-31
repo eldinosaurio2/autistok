@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 
+enum ActivityStatus {
+  planned,
+  completed,
+  completedWithDifficulty,
+  notCompleted,
+}
+
 class Activity {
   String id;
   String name;
@@ -7,6 +14,7 @@ class Activity {
   TimeOfDay startTime;
   TimeOfDay endTime;
   double energy;
+  ActivityStatus status;
 
   Activity({
     required this.id,
@@ -15,6 +23,7 @@ class Activity {
     required this.startTime,
     required this.endTime,
     required this.energy,
+    this.status = ActivityStatus.planned,
   });
 
   Map<String, dynamic> toJson() {
@@ -25,6 +34,7 @@ class Activity {
       'startTime': '${startTime.hour}:${startTime.minute}',
       'endTime': '${endTime.hour}:${endTime.minute}',
       'energy': energy,
+      'status': status.toString(),
     };
   }
 
@@ -41,6 +51,10 @@ class Activity {
       endTime: TimeOfDay(
           hour: int.parse(endTimeParts[0]), minute: int.parse(endTimeParts[1])),
       energy: json['energy'],
+      status: ActivityStatus.values.firstWhere(
+        (e) => e.toString() == json['status'],
+        orElse: () => ActivityStatus.planned,
+      ),
     );
   }
 }

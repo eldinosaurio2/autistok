@@ -30,6 +30,7 @@ void main() async {
       providers: [
         Provider<DataService>.value(value: dataService),
         ChangeNotifierProvider(create: (_) => ThemeNotifier(dataService)),
+        Provider<NotificationService>(create: (_) => NotificationService()),
         ChangeNotifierProvider(
           create: (_) => RewardService(
             dataService,
@@ -79,6 +80,7 @@ class AutiStockApp extends StatelessWidget {
             '/rewards': (context) => const RewardsScreen(),
             '/settings': (context) => const SettingsScreen(),
             '/profile': (context) => const ProfileScreen(),
+            // '/energy-tracker': (context) => const EnergyTrackerScreen(), // Removed due to missing class
             '/emergency': (context) => const EmergencyContactScreen(),
             '/manual': (context) => const UserManualScreen(),
             '/planner': (context) =>

@@ -43,13 +43,21 @@ class UserManualScreen extends StatelessWidget {
             ),
             _buildSectionTitle('6. Calendario'),
             _buildSectionContent(
-              'Organiza tus actividades y eventos en el calendario. Próximamente, podrás ver tus registros de ánimo y actividades planificadas.',
+              'Organiza tus actividades y eventos en el calendario. Ahora puedes planificar tu día y evaluar cómo lo ejecutas. Cada día en el calendario se coloreará según el estado de tus actividades:\n'
+              '- Verde: Todas las actividades completadas.\n'
+              '- Amarillo: Al menos una actividad completada con dificultad.\n'
+              '- Rojo: Al menos una actividad no completada.\n'
+              '- Azul: Todas las actividades están planeadas.',
             ),
-            _buildSectionTitle('7. Configuración'),
+            _buildSectionTitle('7. Configuración Sensorial'),
+            _buildSectionContent(
+              'Ajusta tus sensibilidades a la luz y al sonido. Si tu sensibilidad a la luz es alta, la aplicación te sugerirá cambiar a un tema oscuro para una mejor experiencia visual.',
+            ),
+            _buildSectionTitle('8. Configuración'),
             _buildSectionContent(
               'Personaliza tu experiencia en la aplicación. Puedes cambiar entre el tema claro y oscuro, y ajustar el tamaño del texto para una mejor lectura. También puedes gestionar las notificaciones de la aplicación, incluyendo un interruptor global para activarlas o desactivarlas, y ajustes individuales para los recordatorios de estado de ánimo, recordatorios de actividades y notificaciones de recompensas. Ten en cuenta que las notificaciones solo están disponibles en la versión móvil de la aplicación (iOS/Android).',
             ),
-            _buildSectionTitle('8. Botón de Apagado'),
+            _buildSectionTitle('9. Botón de Apagado'),
             _buildSectionContent(
               'En la esquina superior derecha de la pantalla principal, encontrarás un botón para cerrar la aplicación de forma rápida y segura.',
             ),

@@ -5,10 +5,10 @@ import 'package:autistock/screens/regulation/regulation_screen.dart';
 import 'package:autistock/services/data_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:autistock/screens/energy_tracker_screen.dart';
+import 'package:autistock/screens/sensory_settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-// ... existing code ...
-
   final Function(int) onNavigateToPage;
 
   const HomeScreen({super.key, required this.onNavigateToPage});
@@ -49,6 +49,20 @@ class _HomeScreenState extends State<HomeScreen> {
       'screen': const RegulationScreen(),
       'color': Colors.teal[100],
       'id': 'regulation',
+    },
+    {
+      'title': 'Contador de Energía',
+      'icon': Icons.battery_charging_full,
+      'screen': const EnergyTrackerScreen(),
+      'color': Colors.orange[100],
+      'id': 'energy',
+    },
+    {
+      'title': 'Configuración Sensorial',
+      'icon': Icons.hearing,
+      'screen': const SensorySettingsScreen(),
+      'color': Colors.red[100],
+      'id': 'sensory',
     },
   ];
 

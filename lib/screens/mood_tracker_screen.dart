@@ -1,6 +1,7 @@
 import 'package:autistock/models/mood_entry.dart';
 import 'package:autistock/services/data_service.dart';
 import 'package:autistock/widgets/mood_chart.dart';
+import 'package:autistock/services/reward_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -13,6 +14,7 @@ class MoodTrackerScreen extends StatefulWidget {
 
 class MoodTrackerScreenState extends State<MoodTrackerScreen> {
   late DataService _dataService;
+  late RewardService _rewardService;
   String? _selectedMood;
   final List<String> _selectedActivities = [];
   final TextEditingController _notesController = TextEditingController();
@@ -23,14 +25,18 @@ class MoodTrackerScreenState extends State<MoodTrackerScreen> {
   void initState() {
     super.initState();
     _dataService = Provider.of<DataService>(context, listen: false);
+    _rewardService = Provider.of<RewardService>(context, listen: false);
     _loadMoodHistory();
   }
 
   void _loadMoodHistory() async {
     final history = await _dataService.getMoodHistory();
+    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+    final recentHistory =
+        history.where((entry) => entry.date.isAfter(weekAgo)).toList();
     if (mounted) {
       setState(() {
-        _moodHistory = history;
+        _moodHistory = recentHistory;
       });
     }
   }
@@ -56,6 +62,9 @@ class MoodTrackerScreenState extends State<MoodTrackerScreen> {
 
     if (!mounted) return;
 
+    final allEntries = await _dataService.getMoodHistory();
+    _rewardService.checkAndUnlockRewards(allEntries);
+
     _loadMoodHistory(); // Recargar el historial para actualizar el gráfico
 
     setState(() {
@@ -71,13 +80,27 @@ class MoodTrackerScreenState extends State<MoodTrackerScreen> {
 
   int _getMoodScore(String mood) {
     const moodScores = {
+      // Positive
       'Feliz': 5,
+      'Amor': 5,
+      'Orgullo': 5,
+      'Ilusión': 5,
+      'Calma': 4,
+
+      // Neutral
       'Neutral': 3,
+      'Pensativo': 3,
+      'Sorpresa': 3,
+
+      // Negative
       'Preocupado': 2,
       'Ansioso': 2,
       'Triste': 2,
+      'Vergüenza': 2,
+      'Cansancio': 2,
+      'Decepcionado': 2,
       'Miedo': 1,
-      'Ira': 1,
+      'Enojado': 1,
       'Asco': 1,
     };
     return moodScores[mood] ?? 3;
@@ -123,14 +146,23 @@ class MoodTrackerScreenState extends State<MoodTrackerScreen> {
 
   Widget _buildMoodSelection() {
     const moods = {
-      'Ansioso': 'assets/pictogramas/ansioso.png',
-      'Asco': 'assets/pictogramas/asco.png',
       'Feliz': 'assets/pictogramas/feliz.png',
-      'Ira': 'assets/pictogramas/ira.png',
-      'Miedo': 'assets/pictogramas/miedo.png',
-      'Neutral': 'assets/pictogramas/neutral.png',
-      'Preocupado': 'assets/pictogramas/preocupado.png',
       'Triste': 'assets/pictogramas/triste.png',
+      'Enojado': 'assets/pictogramas/enojado.png',
+      'Sorpresa': 'assets/pictogramas/sorpresa.png',
+      'Miedo': 'assets/pictogramas/miedo.png',
+      'Ansioso': 'assets/pictogramas/ansioso.png',
+      'Neutral': 'assets/pictogramas/neutral.png',
+      'Amor': 'assets/pictogramas/amor.png',
+      'Vergüenza': 'assets/pictogramas/verguenza.png',
+      'Orgullo': 'assets/pictogramas/orgullo.png',
+      'Cansancio': 'assets/pictogramas/cansancio.png',
+      'Calma': 'assets/pictogramas/calma.png',
+      'Pensativo': 'assets/pictogramas/pensativo.png',
+      'Preocupado': 'assets/pictogramas/preocupado.png',
+      'Asco': 'assets/pictogramas/asco.png',
+      'Ilusión': 'assets/pictogramas/ilusion.png',
+      'Decepcionado': 'assets/pictogramas/decepcionado.png',
     };
 
     return Wrap(

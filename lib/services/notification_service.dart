@@ -23,19 +23,12 @@ class NotificationService {
     const LinuxInitializationSettings initializationSettingsLinux =
         LinuxInitializationSettings(defaultActionName: 'Open notification');
 
-    const WindowsInitializationSettings initializationSettingsWindows =
-        WindowsInitializationSettings(
-            appName: 'autistock',
-            appUserModelId: 'com.autistock.app',
-            guid: 'a9d1d8e8-5a5d-4c77-9b2e-3a3a9b8d9c2e');
-
     const InitializationSettings initializationSettings =
         InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
       macOS: initializationSettingsIOS,
       linux: initializationSettingsLinux,
-      windows: initializationSettingsWindows,
     );
 
     await flutterLocalNotificationsPlugin.initialize(
@@ -85,6 +78,8 @@ class NotificationService {
       'Es hora de: ${activity.name}',
       scheduleTime,
       notificationDetails,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: 'activity_${activity.id}',
     );
@@ -115,6 +110,8 @@ class NotificationService {
             importance: Importance.max,
             priority: Priority.high),
       ),
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
@@ -149,6 +146,8 @@ class NotificationService {
             priority: Priority.high,
           ),
         ),
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
         payload: 'mood_reminder',

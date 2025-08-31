@@ -83,6 +83,13 @@ class ActivityPlannerScreenState extends State<ActivityPlannerScreen> {
     }
   }
 
+  void _updateActivityStatus(int index, ActivityStatus status) {
+    setState(() {
+      _activities[index].status = status;
+    });
+    _saveActivities();
+  }
+
   void _showActivityDialog({Activity? activity, int? index}) async {
     final newActivity = await showDialog<Activity>(
       context: context,
@@ -117,6 +124,24 @@ class ActivityPlannerScreenState extends State<ActivityPlannerScreen> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
           ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Usa el botón (+) para añadir una actividad. Para cada actividad, puedes:',
+                  style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• Pulsar el símbolo de verificación (✓) para marcar el estado de la actividad: completada exitosamente, completada con dificultad, o no completada\n'
+                  '• Editar o eliminar la actividad usando los iconos correspondientes',
+                  style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: ListView.builder(
               itemCount: _activities.length,
@@ -127,6 +152,8 @@ class ActivityPlannerScreenState extends State<ActivityPlannerScreen> {
                   onEdit: () =>
                       _showActivityDialog(activity: activity, index: index),
                   onDelete: () => _removeActivity(index),
+                  onStatusChanged: (status) =>
+                      _updateActivityStatus(index, status),
                 );
               },
             ),
@@ -158,6 +185,7 @@ class __ActivityDialogState extends State<_ActivityDialog> {
   late TimeOfDay _endTime;
   late double _energy;
   late String _id;
+  late ActivityStatus _status;
 
   @override
   void initState() {
@@ -168,6 +196,7 @@ class __ActivityDialogState extends State<_ActivityDialog> {
         TimeOfDay.fromDateTime(DateTime.now().add(const Duration(hours: 1)));
     _energy = widget.activity?.energy ?? 0.0;
     _id = widget.activity?.id ?? const Uuid().v4();
+    _status = widget.activity?.status ?? ActivityStatus.planned;
   }
 
   void _pickStartTime() async {
@@ -204,6 +233,7 @@ class __ActivityDialogState extends State<_ActivityDialog> {
         startTime: _startTime,
         endTime: _endTime,
         energy: _energy,
+        status: _status,
       );
       Navigator.of(context).pop(activity);
     }
@@ -288,12 +318,14 @@ class ActivityCard extends StatelessWidget {
   final Activity activity;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final ValueChanged<ActivityStatus> onStatusChanged;
 
   const ActivityCard(
       {super.key,
       required this.activity,
       required this.onEdit,
-      required this.onDelete});
+      required this.onDelete,
+      required this.onStatusChanged});
 
   Color _getEnergyColor(double energy) {
     if (energy > 0) {
@@ -305,6 +337,20 @@ class ActivityCard extends StatelessWidget {
     }
   }
 
+  Color _getStatusColor(ActivityStatus status) {
+    switch (status) {
+      case ActivityStatus.completed:
+        return Colors.green.shade100;
+      case ActivityStatus.completedWithDifficulty:
+        return Colors.yellow.shade100;
+      case ActivityStatus.notCompleted:
+        return Colors.red.shade100;
+      case ActivityStatus.planned:
+      default:
+        return _getEnergyColor(activity.energy);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = MaterialLocalizations.of(context);
@@ -312,7 +358,7 @@ class ActivityCard extends StatelessWidget {
     final endTime = localizations.formatTimeOfDay(activity.endTime);
 
     return Card(
-      color: _getEnergyColor(activity.energy),
+      color: _getStatusColor(activity.status),
       margin: const EdgeInsets.all(8.0),
       child: ListTile(
         title: Text(activity.name),
@@ -327,6 +373,29 @@ class ActivityCard extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.delete),
               onPressed: onDelete,
+            ),
+            PopupMenuButton<ActivityStatus>(
+              icon: const Icon(Icons.check_circle_outline),
+              onSelected: onStatusChanged,
+              itemBuilder: (BuildContext context) =>
+                  <PopupMenuEntry<ActivityStatus>>[
+                const PopupMenuItem<ActivityStatus>(
+                  value: ActivityStatus.completed,
+                  child: Text('Completada'),
+                ),
+                const PopupMenuItem<ActivityStatus>(
+                  value: ActivityStatus.completedWithDifficulty,
+                  child: Text('Completada con dificultad'),
+                ),
+                const PopupMenuItem<ActivityStatus>(
+                  value: ActivityStatus.notCompleted,
+                  child: Text('No completada'),
+                ),
+                const PopupMenuItem<ActivityStatus>(
+                  value: ActivityStatus.planned,
+                  child: Text('Planeada'),
+                ),
+              ],
             ),
           ],
         ),
